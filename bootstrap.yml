@@ -1,0 +1,104 @@
+---
+- hosts: localhost
+  become: yes
+
+  tasks:
+
+    - name: basic tools installed for Docker
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      with_items:
+        - htop
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg2
+        - software-properties-common
+
+    - name: docker repositories GPG key added
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: docker repository added 
+      apt_repository:
+        repo: deb https://download.docker.com/linux/debian stretch stable
+        state: present
+
+    - name: docker-ce installed
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: yes
+
+    - name: gitlab official repository added
+      shell: "curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | sudo bash"
+
+    - name: gitlab-runner installed
+      apt:
+        name: gitlab-runner
+        state: present
+        update_cache: yes
+
+    - name: docker group created
+      group:
+        name: docker
+        state: present
+
+    - name: gitlab-runner user added into the docker group
+      user:
+        name: gitlab-runner
+        groups: docker
+        append: yes
+
+    - name: required packages installed for Python3.6
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - make
+        - build-essential
+        - libssl-dev
+        - zlib1g-dev
+        - libbz2-dev
+        - libreadline-dev
+        - libsqlite3-dev
+        - wget
+        - curl
+        - llvm
+        - libncurses5-dev
+        - libncursesw5-dev
+        - xz-utils
+        - tk-dev
+
+    - name: Python3.6 sources downloaded
+      get_url:
+        url: https://www.python.org/ftp/python/3.6.4/Python-3.6.4.tgz
+        dest: /tmp
+
+    - name: Python3.6 sources unarchived
+      unarchive:
+        src: /tmp/Python-3.6.4.tgz
+        dest: /tmp
+
+    - name: Python3.6 built
+      shell: ./configure --enable-optimizations && make -j8
+      args:
+        chdir: /tmp/Python-3.6.4
+
+    - name: Python3.6 installed
+      shell: make altinstall
+      args:
+        chdir: /tmp/Python-3.6.4
+
+    - name: pip3 installed
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: awscli installed
+      pip:
+        name: awscli
+        executable: pip3.6
